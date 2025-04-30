@@ -11,12 +11,12 @@ def apply_rules(df: pd.DataFrame, rules_path: str) -> pd.DataFrame:
         name = rule.get("name", "<unnamed>")
         print(f"Applying rule: {name} ({rule_type})")
 
-        if rule_type == "irule":
+        if rule_type == "rule":
+            apply_rule(df, rule)
+        elif rule_type == "irule":
             apply_irule(df, rule)
         elif rule_type == "crule":
             apply_crule(df, rule)
-        elif rule_type == "crule":
-            pass  # TODO: implement context-sensitive rule
         else:
             print(f"Warning: Unknown rule type '{rule_type}' in rule '{name}'")
 
@@ -117,3 +117,16 @@ def apply_crule(df, rule):
 
     return df
 
+def apply_rule(df, rule):
+    moi = rule['moi']
+    pgn = moi['pgn']
+    sa = moi.get('sa', None)
+    label = rule['label']
+
+    # Filter messages matching PGN (and SA if specified)
+    filtered = df[df['pgn'] == pgn]
+    if sa is not None:
+        filtered = filtered[filtered['source'] == sa]
+
+    for idx in filtered.index:
+        df.loc[idx, 'label'] = label

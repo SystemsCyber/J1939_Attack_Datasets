@@ -19,3 +19,10 @@ rules:
       comparator: ">"
       threshold: 1
     label: spoofed_address_claim
+
+  - name: Hazardous Low Torque Request
+    type: rule
+    moi:
+      pgn: 0
+      sa: 11         # decimal 0x0B
+    label: high_torque_command 

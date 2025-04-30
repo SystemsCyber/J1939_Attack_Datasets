@@ -1,0 +1,7 @@
+rules:
+  - name: Any-ID Flood
+    type: irule
+    moi: {}  # No filter — applies to all messages
+    interval_ms: 1.0
+    threshold: 5
+    label: flood

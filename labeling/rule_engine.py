@@ -13,7 +13,7 @@ def apply_rules(df: pd.DataFrame, rules_path: str) -> pd.DataFrame:
 
         if rule_type == "irule":
             apply_irule(df, rule)
-        elif rule_type == "rule":
+        elif rule_type == "crule":
             apply_crule(df, rule)
         elif rule_type == "crule":
             pass  # TODO: implement context-sensitive rule
@@ -63,45 +63,57 @@ def apply_irule(df, rule):
     return df
 
 def apply_crule(df, rule):
-    moi_pgn = rule["moi"]["pgn"]
-    context = rule["context"]
+    moi_pgn = rule['moi']['pgn']
+    ctx = rule['context']
+    ctx_pgn = ctx['pgn']
+    ctx_sa = ctx['sa']
+    offset = ctx['offset']
+    length = ctx['length']
+    scale = ctx['scale']
+    comparator = ctx['comparator']
+    threshold = ctx['threshold']
+    label = rule['label']
 
-    ctx_pgn = context["pgn"]
-    offset = context["offset"]
-    length = context["length"]
-    scale = context["scale"]
-    comparator = context["comparator"]
-    threshold = context["threshold"]
-    label = rule["label"]
-
-    # Step 1: Extract all PGN 65265 rows (vehicle speed)
-    speed_rows = df[df["pgn"] == ctx_pgn].copy()
-    speed_map = {}  # timestamp → decoded speed
-
-    for idx, row in speed_rows.iterrows():
+    # Track latest context value by timestamp
+    ctx_df = df[(df['pgn'] == ctx_pgn) & (df['source'] == ctx_sa)].copy()
+    ctx_values = {}
+    for idx, row in ctx_df.iterrows():
         try:
-            data = row["data"]
-            if len(data) < (offset + length) * 2:
-                continue
-            byte_seq = bytes.fromhex(data)
-            raw = int.from_bytes(byte_seq[offset:offset+length], byteorder='little')
-            speed_kmh = raw * scale
-            speed_map[row["timestamp"]] = speed_kmh
+            data_hex = row['data']
+            data_bytes = bytes.fromhex(data_hex)
+            raw_val = int.from_bytes(data_bytes[offset:offset+length][::-1], byteorder='big')
+            value = raw_val * scale
+            ctx_values[row['timestamp']] = value
         except Exception as e:
-            continue
+            continue  # Skip malformed rows
 
-    # Step 2: Scan for MOI (PGN 60928), check prior speed context
-    moi_rows = df[df["pgn"] == moi_pgn]
+    if not ctx_values:
+        print(f"No context values found for PGN {ctx_pgn}")
+        return df
 
-    for idx, row in moi_rows.iterrows():
-        t = row["timestamp"]
-        prior_speeds = [v for ts, v in speed_map.items() if ts <= t]
-        if not prior_speeds:
-            continue
-        latest_speed = prior_speeds[-1]
+    # Get sorted list of timestamps for context
+    ctx_timestamps = sorted(ctx_values.keys())
 
-        # Apply condition
-        if comparator == ">" and latest_speed > threshold:
-            df.at[idx, "label"] = label
-        elif comparator == "<=" and latest_speed <= threshold:
-            df.at[idx, "label"] = label
+    # Evaluate messages of interest
+    moi_df = df[df['pgn'] == moi_pgn].copy()
+
+    for idx, row in moi_df.iterrows():
+        ts = row['timestamp']
+
+        # Find latest context timestamp before current message
+        prev_ctx_ts = max((t for t in ctx_timestamps if t < ts), default=None)
+
+        if prev_ctx_ts is not None:
+            ctx_val = ctx_values[prev_ctx_ts]
+            # Evaluate comparator
+            if comparator == ">" and ctx_val > threshold:
+                df.loc[idx, 'label'] = label
+            elif comparator == "<" and ctx_val < threshold:
+                df.loc[idx, 'label'] = label
+            elif comparator == "==" and ctx_val == threshold:
+                df.loc[idx, 'label'] = label
+        else:
+            continue  # No context found before this message
+
+    return df
+

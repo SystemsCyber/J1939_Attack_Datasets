@@ -12,9 +12,10 @@ rules:
       pgn: 60928
     context:
       pgn: 65265
+      sa: 0
       offset: 1         # start at byte[1]
       length: 2         # use byte[1] and byte[2]
       scale: 0.00390625
       comparator: ">"
-      threshold: 5
+      threshold: 1
     label: spoofed_address_claim

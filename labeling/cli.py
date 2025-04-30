@@ -3,6 +3,8 @@ import argparse
 import os
 from labeling.parser import parse_candump
 from labeling.rule_engine import apply_rules
+import sys
+sys.stdout.flush()
 
 def main():
     parser = argparse.ArgumentParser(description="Label CAN logs using rule-based engine.")

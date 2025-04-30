@@ -5,3 +5,16 @@ rules:
     interval_ms: 1.0
     threshold: 5
     label: flood
+
+  - name: Address Claim While Moving
+    type: crule
+    moi:
+      pgn: 60928
+    context:
+      pgn: 65265
+      offset: 1         # start at byte[1]
+      length: 2         # use byte[1] and byte[2]
+      scale: 0.00390625
+      comparator: ">"
+      threshold: 5
+    label: spoofed_address_claim

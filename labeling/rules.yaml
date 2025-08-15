@@ -1,28 +1,73 @@
 rules:
   - name: Any-ID Flood
     type: irule
-    moi: {}  # No filter — applies to all messages
+    semantics: temporal               # usage | temporal | state
+    metadata:
+      severity: high                  # low | medium | high
+      layer: network                  # e.g., network, transport, application
+      description: "Burst of messages detected across all IDs in a short time window"
+    moi: {}                            # No filter — applies to all messages
     interval_ms: 1.0
     threshold: 5
     label: flood
 
   - name: Address Claim While Moving
     type: crule
+    semantics: state
+    metadata:
+      severity: medium
+      layer: application
+      description: "ECU sent address claim while vehicle speed > 1 km/h"
     moi:
       pgn: 60928
     context:
-      pgn: 65265
-      sa: 0
-      offset: 1         # start at byte[1]
-      length: 2         # use byte[1] and byte[2]
-      scale: 0.00390625
+      pgn: 65265                       # Vehicle Speed PGN
+      sa: 0                            # Source address of speed provider
+      offset: 1                        # Start at byte[1]
+      length: 2                        # Use byte[1] and byte[2]
+      scale: 0.00390625                 # Resolution from SPN definition
       comparator: ">"
       threshold: 1
     label: spoofed_address_claim
 
   - name: Hazardous Low Torque Request
     type: rule
+    semantics: usage
+    metadata:
+      severity: high
+      layer: application
+      description: "High torque request sent from source address 0x0B"
     moi:
       pgn: 0
-      sa: 11         # decimal 0x0B
-    label: high_torque_command 
+      sa: 11                           # decimal 0x0B
+    label: high_torque_command
+
+
+# rules:
+#   - name: Any-ID Flood
+#     type: irule
+#     moi: {}  # No filter — applies to all messages
+#     interval_ms: 1.0
+#     threshold: 5
+#     label: flood
+
+#   - name: Address Claim While Moving
+#     type: crule
+#     moi:
+#       pgn: 60928
+#     context:
+#       pgn: 65265
+#       sa: 0
+#       offset: 1         # start at byte[1]
+#       length: 2         # use byte[1] and byte[2]
+#       scale: 0.00390625
+#       comparator: ">"
+#       threshold: 1
+#     label: spoofed_address_claim
+
+#   - name: Hazardous Low Torque Request
+#     type: rule
+#     moi:
+#       pgn: 0
+#       sa: 11         # decimal 0x0B
+#     label: high_torque_command 
